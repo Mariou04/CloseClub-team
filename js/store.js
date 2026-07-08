@@ -10,7 +10,6 @@ const STORAGE_KEYS = {
   stories: 'ccteam_stories',
   reports: 'ccteam_reports',
   cards: 'ccteam_cards',
-  users: 'ccteam_users',
 };
 
 const USERS = [
@@ -36,23 +35,13 @@ function writeLS(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-const db = () => window.supabaseClient;
-
-/* ---------------------------- helpers Supabase --------------------------- */
-
 function isOnline() {
-  return db() !== null && db() !== undefined;
+  return window.supabaseClient && window.supabaseClient.sb;
 }
 
 /* ---------------------------- Sesión / usuario --------------------------- */
 
 async function getSession() {
-  if (isOnline()) {
-    const { data: { user }, error } = await db().auth.getUser();
-    if (error || !user) return readLS(STORAGE_KEYS.session, null);
-    const code = user.user_metadata?.code || user.email?.split('@')[0]?.toUpperCase() || null;
-    return code ? { code } : null;
-  }
   return readLS(STORAGE_KEYS.session, null);
 }
 
@@ -62,9 +51,6 @@ async function setSession(userCode) {
 }
 
 async function clearSession() {
-  if (isOnline()) {
-    await db().auth.signOut();
-  }
   localStorage.removeItem(STORAGE_KEYS.session);
 }
 
@@ -91,10 +77,8 @@ async function autoMigrate() {
 async function getStories() {
   if (isOnline()) {
     await autoMigrate();
-    const { data, error } = await db()
-      .from('stories')
-      .select('*')
-      .order('order_index', { ascending: true });
+    const { data, error } = await window.supabaseClient.sb('stories')
+      .select('*', { order: 'order_index', ascending: true });
     if (error) throw error;
     return data || [];
   }
@@ -103,8 +87,7 @@ async function getStories() {
 
 async function addStory(story) {
   if (isOnline()) {
-    const { data, error } = await db()
-      .from('stories')
+    const { data, error } = await window.supabaseClient.sb('stories')
       .insert({
         title: story.title,
         description: story.description || '',
@@ -112,9 +95,7 @@ async function addStory(story) {
         status: story.status || 'Pendiente',
         created_by: story.createdBy,
         order_index: 0,
-      })
-      .select()
-      .single();
+      });
     if (error) throw error;
     return data;
   }
@@ -142,12 +123,8 @@ async function updateStory(id, changes) {
     if (changes.priority !== undefined) mapped.priority = changes.priority;
     if (changes.status !== undefined) mapped.status = changes.status;
     if (changes.order_index !== undefined) mapped.order_index = changes.order_index;
-    const { data, error } = await db()
-      .from('stories')
-      .update(mapped)
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await window.supabaseClient.sb('stories')
+      .update(id, mapped);
     if (error) throw error;
     return data;
   }
@@ -162,7 +139,7 @@ async function updateStory(id, changes) {
 
 async function deleteStory(id) {
   if (isOnline()) {
-    const { error } = await db().from('stories').delete().eq('id', id);
+    const { error } = await window.supabaseClient.sb('stories').delete(id);
     if (error) throw error;
     return;
   }
@@ -177,7 +154,7 @@ async function reorderStories(orderedIds) {
       id,
       order_index: index,
     }));
-    const { error } = await db().from('stories').upsert(updates);
+    const { error } = await window.supabaseClient.sb('stories').upsert(updates);
     if (error) throw error;
     return updates;
   }
@@ -194,10 +171,8 @@ async function reorderStories(orderedIds) {
 async function getReports() {
   if (isOnline()) {
     await autoMigrate();
-    const { data, error } = await db()
-      .from('reports')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data, error } = await window.supabaseClient.sb('reports')
+      .select('*', { order: 'created_at', ascending: false });
     if (error) throw error;
     return data || [];
   }
@@ -206,17 +181,14 @@ async function getReports() {
 
 async function addReport(report) {
   if (isOnline()) {
-    const { data, error } = await db()
-      .from('reports')
+    const { data, error } = await window.supabaseClient.sb('reports')
       .insert({
         title: report.title,
         description: report.description || '',
         type: report.type || 'Mejora',
         status: report.status || 'Pendiente',
         created_by: report.createdBy,
-      })
-      .select()
-      .single();
+      });
     if (error) throw error;
     return data;
   }
@@ -243,12 +215,8 @@ async function updateReport(id, changes) {
     if (changes.description !== undefined) mapped.description = changes.description;
     if (changes.type !== undefined) mapped.type = changes.type;
     if (changes.status !== undefined) mapped.status = changes.status;
-    const { data, error } = await db()
-      .from('reports')
-      .update(mapped)
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await window.supabaseClient.sb('reports')
+      .update(id, mapped);
     if (error) throw error;
     return data;
   }
@@ -263,7 +231,7 @@ async function updateReport(id, changes) {
 
 async function deleteReport(id) {
   if (isOnline()) {
-    const { error } = await db().from('reports').delete().eq('id', id);
+    const { error } = await window.supabaseClient.sb('reports').delete(id);
     if (error) throw error;
     return;
   }
@@ -277,10 +245,8 @@ async function deleteReport(id) {
 async function getCards() {
   if (isOnline()) {
     await autoMigrate();
-    const { data, error } = await db()
-      .from('cards')
-      .select('*')
-      .order('created_at', { ascending: true });
+    const { data, error } = await window.supabaseClient.sb('cards')
+      .select('*', { order: 'created_at', ascending: true });
     if (error) throw error;
     return data || [];
   }
@@ -289,17 +255,14 @@ async function getCards() {
 
 async function addCard(card) {
   if (isOnline()) {
-    const { data, error } = await db()
-      .from('cards')
+    const { data, error } = await window.supabaseClient.sb('cards')
       .insert({
         title: card.title,
         content: card.content || '',
         category: card.category || 'Fichajes',
         column: card.column || 'Ideas',
         created_by: card.createdBy,
-      })
-      .select()
-      .single();
+      });
     if (error) throw error;
     return data;
   }
@@ -326,12 +289,8 @@ async function updateCard(id, changes) {
     if (changes.content !== undefined) mapped.content = changes.content;
     if (changes.category !== undefined) mapped.category = changes.category;
     if (changes.column !== undefined) mapped.column = changes.column;
-    const { data, error } = await db()
-      .from('cards')
-      .update(mapped)
-      .eq('id', id)
-      .select()
-      .single();
+    const { data, error } = await window.supabaseClient.sb('cards')
+      .update(id, mapped);
     if (error) throw error;
     return data;
   }
@@ -346,7 +305,7 @@ async function updateCard(id, changes) {
 
 async function deleteCard(id) {
   if (isOnline()) {
-    const { error } = await db().from('cards').delete().eq('id', id);
+    const { error } = await window.supabaseClient.sb('cards').delete(id);
     if (error) throw error;
     return;
   }
@@ -365,7 +324,8 @@ async function migrateLocalToSupabase() {
   const localCards = readLS(STORAGE_KEYS.cards, []);
 
   if (localStories.length) {
-    const { data: existing } = await db().from('stories').select('id').limit(1);
+    const { data: existing } = await window.supabaseClient.sb('stories')
+      .select('id', { limit: 1 });
     if (!existing || existing.length === 0) {
       const mapped = localStories.map((s, i) => ({
         title: s.title,
@@ -375,12 +335,13 @@ async function migrateLocalToSupabase() {
         created_by: s.createdBy,
         order_index: i,
       }));
-      await db().from('stories').insert(mapped);
+      await window.supabaseClient.sb('stories').insert(mapped);
     }
   }
 
   if (localReports.length) {
-    const { data: existing } = await db().from('reports').select('id').limit(1);
+    const { data: existing } = await window.supabaseClient.sb('reports')
+      .select('id', { limit: 1 });
     if (!existing || existing.length === 0) {
       const mapped = localReports.map((r) => ({
         title: r.title,
@@ -389,12 +350,13 @@ async function migrateLocalToSupabase() {
         status: r.status || 'Pendiente',
         created_by: r.createdBy,
       }));
-      await db().from('reports').insert(mapped);
+      await window.supabaseClient.sb('reports').insert(mapped);
     }
   }
 
   if (localCards.length) {
-    const { data: existing } = await db().from('cards').select('id').limit(1);
+    const { data: existing } = await window.supabaseClient.sb('cards')
+      .select('id', { limit: 1 });
     if (!existing || existing.length === 0) {
       const mapped = localCards.map((c) => ({
         title: c.title,
@@ -403,7 +365,7 @@ async function migrateLocalToSupabase() {
         column: c.column || 'Ideas',
         created_by: c.createdBy,
       }));
-      await db().from('cards').insert(mapped);
+      await window.supabaseClient.sb('cards').insert(mapped);
     }
   }
 
