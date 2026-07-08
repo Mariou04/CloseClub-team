@@ -68,10 +68,29 @@ async function clearSession() {
   localStorage.removeItem(STORAGE_KEYS.session);
 }
 
+/* ------------------------------ Auto-migracion --------------------------- */
+
+let _migrated = false;
+
+async function autoMigrate() {
+  if (_migrated || !isOnline()) return;
+  _migrated = true;
+  const localStories = readLS(STORAGE_KEYS.stories, []);
+  const localReports = readLS(STORAGE_KEYS.reports, []);
+  const localCards = readLS(STORAGE_KEYS.cards, []);
+  if (!localStories.length && !localReports.length && !localCards.length) return;
+
+  await migrateLocalToSupabase();
+  localStorage.removeItem(STORAGE_KEYS.stories);
+  localStorage.removeItem(STORAGE_KEYS.reports);
+  localStorage.removeItem(STORAGE_KEYS.cards);
+}
+
 /* ------------------------------ Historias -------------------------------- */
 
 async function getStories() {
   if (isOnline()) {
+    await autoMigrate();
     const { data, error } = await db()
       .from('stories')
       .select('*')
@@ -174,6 +193,7 @@ async function reorderStories(orderedIds) {
 
 async function getReports() {
   if (isOnline()) {
+    await autoMigrate();
     const { data, error } = await db()
       .from('reports')
       .select('*')
@@ -256,6 +276,7 @@ async function deleteReport(id) {
 
 async function getCards() {
   if (isOnline()) {
+    await autoMigrate();
     const { data, error } = await db()
       .from('cards')
       .select('*')
