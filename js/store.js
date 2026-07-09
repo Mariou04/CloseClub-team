@@ -33,13 +33,19 @@ function isOnline() {
   return window.supabaseClient && window.supabaseClient.sb;
 }
 
+let _alerted = false;
+
 async function trySupabase(fn) {
   if (!isOnline()) return { ok: false };
   try {
     const result = await fn();
     return { ok: true, data: result };
   } catch (e) {
-    console.warn('Supabase error, usando localStorage:', e.message);
+    console.error('❌ Supabase error:', e.message);
+    if (!_alerted) {
+      _alerted = true;
+      alert('⚠️ Sin conexión a la nube. Tus datos se guardan localmente hasta que reconecte. Tu compañero no los verá.');
+    }
     return { ok: false };
   }
 }
