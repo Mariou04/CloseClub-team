@@ -57,28 +57,24 @@ let _migrated = false;
 async function autoMigrate() {
   if (_migrated || !isOnline()) return;
   _migrated = true;
-  const ls = [STORAGE_KEYS.stories, STORAGE_KEYS.reports, STORAGE_KEYS.cards]
-    .map(k => readLS(k, []));
-  if (!ls.some(a => a.length)) return;
   try {
     for (let i = 0; i < 3; i++) {
-      const key = [STORAGE_KEYS.stories, STORAGE_KEYS.reports, STORAGE_KEYS.cards][i];
-      const local = readLS(key, []);
+      const tables = ['stories', 'reports', 'cards'];
+      const keys = [STORAGE_KEYS.stories, STORAGE_KEYS.reports, STORAGE_KEYS.cards];
+      const local = readLS(keys[i], []);
       if (!local.length) continue;
-      const { data: existing } = await window.supabaseClient.sb(
-        ['stories', 'reports', 'cards'][i]
-      ).select('id', { limit: 1 });
-      if (existing && existing.length) continue;
       const mapped = local.map((r, idx) => {
         const base = { title: r.title, description: r.description || '', created_by: r.createdBy };
-        if (key === STORAGE_KEYS.stories) return { ...base, priority: r.priority || 'Media', status: r.status || 'Pendiente', order_index: idx };
-        if (key === STORAGE_KEYS.reports) return { ...base, type: r.type || 'Mejora', status: r.status || 'Pendiente' };
+        if (keys[i] === STORAGE_KEYS.stories) return { ...base, priority: r.priority || 'Media', status: r.status || 'Pendiente', order_index: idx };
+        if (keys[i] === STORAGE_KEYS.reports) return { ...base, type: r.type || 'Mejora', status: r.status || 'Pendiente' };
         return { ...base, content: r.content || '', category: r.category || 'Fichajes', column: r.column || 'Ideas' };
       });
-      await window.supabaseClient.sb(['stories', 'reports', 'cards'][i]).insert(mapped);
+      await window.supabaseClient.sb(tables[i]).insert(mapped);
+      localStorage.removeItem(keys[i]);
     }
-    [STORAGE_KEYS.stories, STORAGE_KEYS.reports, STORAGE_KEYS.cards].forEach(k => localStorage.removeItem(k));
-    console.info('Migración completada.');
+    if (readLS(STORAGE_KEYS.stories, []).length || readLS(STORAGE_KEYS.reports, []).length || readLS(STORAGE_KEYS.cards, []).length) {
+      console.info('Migración completada.');
+    }
   } catch (e) {
     console.warn('Migración no disponible:', e.message);
   }
