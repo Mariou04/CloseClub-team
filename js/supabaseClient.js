@@ -7,7 +7,7 @@
 const SUPABASE_URL = 'https://urtfcjpbpnxefzgbcnfu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVydGZjanBicG54ZWZ6Z2JjbmZ1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1NDM2NjIsImV4cCI6MjA5OTExOTY2Mn0.D4ALSHnDnQSLi6luQqalhlfhlKw_uTsOjsCnwf_Wr6w';
 
-async function sb(table) {
+function sb(table) {
   const headers = {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
